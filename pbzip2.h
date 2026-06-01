@@ -102,6 +102,7 @@ typedef struct outBuff
 	bool isLastInSequence;
 	outBuff * next; // next in longer sequence of buffers for this block
 	//outBuff * last; // last in sequence (here as quick hack since global one would be enough)
+	bool ready; // true = slot has data ready for fileWriter; false = empty/consumed
 
 	outBuff(
 		char * aBuf = NULL,
@@ -117,8 +118,8 @@ typedef struct outBuff
 			sequenceNumber(aSequenceNumber),
 			inSize(aInSize),
 			isLastInSequence(isLast),
-			next(aNext)//,
-			//last(NULL)
+			next(aNext),
+			ready(false)
 	{}
 } outBuff;
 

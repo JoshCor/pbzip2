@@ -1684,7 +1684,7 @@ void *fileWriter(void *outname)
 			break;
 		}
 
-		if ((OutputBuffer[outBufferPos].buf == NULL) &&
+		if ((!OutputBuffer[outBufferPos].ready) &&
 			((prevBlockInSequence == NULL) || (prevBlockInSequence->next == NULL)))
 		{
 			safe_cond_timed_wait(&OutBufferHeadNotEmpty, OutMutex, 1, "fileWriter");
@@ -1735,9 +1735,7 @@ void *fileWriter(void *outname)
 		
 		bytesProcessed += outBlock->inSize;
 		delete [] outBlock->buf;
-		outBlock->buf = NULL;
-		outBlock->bufSize = 0;
-
+		outBlock->ready = false;
 		if (outBlock->isLastInSequence)
 		{
 			if (++outBufferPos == NumBufferedBlocksMax)
@@ -2785,8 +2783,6 @@ void outputBufferInit(size_t size)
 	NumBufferedTailBlocks = 0;
 
 	outBuff emptyElement;
-	emptyElement.buf = NULL;
-	emptyElement.bufSize = 0;
 
 	// Resize and fill-in with empty elements
 	OutputBuffer.assign(size, emptyElement);
@@ -2831,7 +2827,7 @@ outBuff * outputBufferSeqAddNext(outBuff * preveElement, outBuff * newElement)
 	safe_mutex_lock(OutMutex);
 
 	while ((NumBufferedTailBlocks >= NumBufferedBlocksMax) &&
-			(preveElement->buf != NULL))
+			(preveElement->ready))
 	{
 		if (syncGetTerminateFlag() != 0)
 		{
@@ -2858,11 +2854,12 @@ outBuff * outputBufferSeqAddNext(outBuff * preveElement, outBuff * newElement)
 	}
 
 	preveElement->next = newElement;
+	newElement->ready = true;
 
 	++NumBufferedTailBlocks;
 
 	// size_t outBufPos = getOutputBufferPos(newElement->blockNumber);
-	if (preveElement->buf == NULL)
+	if (!preveElement->ready)
 	{
 		// fileWriter has already consumed the previous block. Let it know
 		// for that one early
@@ -2920,6 +2917,7 @@ outBuff * outputBufferAdd(const outBuff & element, const char *caller)
 	size_t outBuffPos = getOutputBufferPos(element.blockNumber);
 
 	OutputBuffer[outBuffPos] = element;
+	OutputBuffer[outBuffPos].ready = true;
 	++NumBufferedBlocks;
 
 	if (NextBlockToWrite == element.blockNumber)
