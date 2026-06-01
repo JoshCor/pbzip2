@@ -103,6 +103,7 @@ typedef struct outBuff
 	outBuff * next; // next in longer sequence of buffers for this block
 	//outBuff * last; // last in sequence (here as quick hack since global one would be enough)
 	bool ready; // true = slot has data ready for fileWriter; false = empty/consumed
+	char _pad[23]; // pad struct to 64 bytes (one cache line)
 
 	outBuff(
 		char * aBuf = NULL,
@@ -121,7 +122,7 @@ typedef struct outBuff
 			next(aNext),
 			ready(false)
 	{}
-} outBuff;
+} __attribute__((aligned(64))) outBuff;
 
 typedef enum ExitFlag
 {
